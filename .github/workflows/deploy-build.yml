@@ -1,0 +1,37 @@
+name: Build and Deploy to Build Branch
+
+on:
+  push:
+    branches:
+      - main  # or your default branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.17.1'
+          cache: 'npm'
+
+      - name: Install npm@10 (optional but recommended)
+        run: npm install -g npm@10
+
+      - name: Install dependencies (with legacy peer deps)
+        run: npm install --legacy-peer-deps
+
+      - name: Build the project
+        run: npm run build
+
+      - name: Deploy dist/ to build branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: build
+          publish_dir: ./dist
+          force_orphan: true
