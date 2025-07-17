@@ -53,7 +53,9 @@ export default class Result {
       private numBits: number /*int*/ = rawBytes == null ? 0 : 8 * rawBytes.length,
       private resultPoints: ResultPoint[],
       private format: BarcodeFormat,
-      private timestamp: number /*long*/ = System.currentTimeMillis()) {
+      private timestamp: number /*long*/ = System.currentTimeMillis(),
+      private version?: number
+    ) {
         this.text = text;
         this.rawBytes = rawBytes;
         if (undefined === numBits || null === numBits) {
@@ -69,6 +71,8 @@ export default class Result {
         } else {
             this.timestamp = timestamp;
         }
+
+        this.version = version
     }
 
     /**

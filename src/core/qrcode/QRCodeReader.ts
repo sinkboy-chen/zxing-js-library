@@ -31,6 +31,10 @@ import Decoder from './decoder/Decoder';
 import QRCodeDecoderMetaData from './decoder/QRCodeDecoderMetaData';
 import Detector from './detector/Detector';
 
+import FormatException from '../FormatException'; // adjust path if needed
+import BitMatrixParser from './decoder/BitMatrixParser'; // adjust path if needed
+
+
 
 /*import java.util.List;*/
 /*import java.util.Map;*/
@@ -63,26 +67,44 @@ export default class QRCodeReader implements Reader {
   //   return this.decode(image, null)
   // }
 
+  private tryReadVersion(matrix: BitMatrix): number | undefined {
+    try {
+      const parser = new BitMatrixParser(matrix);
+      const version = parser.readVersion();
+      return version.getVersionNumber();
+    } catch (e) {
+      if (e instanceof FormatException) {
+        console.warn("Failed to read QR version:", e.message);
+        return undefined;
+      }
+      throw e; // unexpected error
+    }
+  }
+
   /*@Override*/
   public decode(image: BinaryBitmap, hints?: Map<DecodeHintType, any>): Result {
     let decoderResult: DecoderResult;
     let points: Array<ResultPoint>;
+    let versionNumber: number | undefined;
     if (hints !== undefined && hints !== null && undefined !== hints.get(DecodeHintType.PURE_BARCODE)) {
       const bits = QRCodeReader.extractPureBits(image.getBlackMatrix());
       decoderResult = this.decoder.decodeBitMatrix(bits, hints);
       points = QRCodeReader.NO_POINTS;
+      versionNumber = this.tryReadVersion(bits);
     } else {
       const detectorResult = new Detector(image.getBlackMatrix()).detect(hints);
-      decoderResult = this.decoder.decodeBitMatrix(detectorResult.getBits(), hints);
+      const bits = detectorResult.getBits();
+      decoderResult = this.decoder.decodeBitMatrix(bits, hints);
       points = detectorResult.getPoints();
+      versionNumber = this.tryReadVersion(bits);
     }
 
     // If the code was mirrored: swap the bottom-left and the top-right points.
     if (decoderResult.getOther() instanceof QRCodeDecoderMetaData) {
       (<QRCodeDecoderMetaData>decoderResult.getOther()).applyMirroredCorrection(points);
     }
-
-    const result = new Result(decoderResult.getText(), decoderResult.getRawBytes(), undefined, points, BarcodeFormat.QR_CODE, undefined);
+    
+    const result = new Result(decoderResult.getText(), decoderResult.getRawBytes(), undefined, points, BarcodeFormat.QR_CODE, undefined, versionNumber);
     const byteSegments: Array<Uint8Array> = decoderResult.getByteSegments();
     if (byteSegments !== null) {
       result.putMetadata(ResultMetadataType.BYTE_SEGMENTS, byteSegments);
